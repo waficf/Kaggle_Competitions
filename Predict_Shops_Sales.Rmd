@@ -1,0 +1,73 @@
+# Predict Future Sales Submission
+***
+The task is to forecast the total amount of products sold in every shop for the 
+test set. Note that the listof shops and products slightly changes every month. 
+Creating a robust model that can handle such situations is part of the challenge
+
+You need to forecast the sales for these shops and products for November 2015
+
+```{r}
+library(dplyr)
+library(ggplot2) # Data visualization
+library(forecast)
+```
+
+```{r}
+item_cat <- read.csv('/Users/wafic/Downloads/Predict_Sales_Kaggle/item_categories.csv', stringsAsFactors = FALSE)
+items <- read.csv('/Users/wafic/Downloads/Predict_Sales_Kaggle/items.csv', stringsAsFactors = FALSE)
+test <- read.csv('/Users/wafic/Downloads/Predict_Sales_Kaggle/test.csv', stringsAsFactors = FALSE)
+train <- read.csv('/Users/wafic/Downloads/Predict_Sales_Kaggle/sales_train.csv', stringsAsFactors = FALSE)
+shops <- read.csv('/Users/wafic/Downloads/Predict_Sales_Kaggle/shops.csv', stringsAsFactors = FALSE)
+```
+
+```{r}
+str(train)
+```
+
+
+## Exploring the data
+```{r}
+dim(item_cat);dim(items)
+```
+We have 22,170 items categorized into 84 categories
+
+#### Merging column id with train data
+```{r}
+head(items)
+```
+
+```{r}
+train_data <- merge(train, items, by = "item_id")
+```
+Added category column to the train data
+
+```{r}
+str(train_data)
+```
+
+```{r}
+train_data$day <- format(as.Date(train_data$date,format="%d.%m.%Y"), "%d")
+train_data$month <- format(as.Date(train_data$date,format="%d.%m.%Y"), "%m")
+train_data$year <- format(as.Date(train_data$date,format="%d.%m.%Y"), "%Y")
+
+train_data$day <- factor(train_data$day)
+train_data$month <- factor(train_data$month)
+train_data$year <- factor(train_data$year)
+```
+
+```{r}
+str(train_data)
+```
+
+```{r}
+head(train_data)
+```
+
+```{r}
+ggplot(aes(x=year, fill=item_id), data = train_data)+
+  geom_bar()
+```
+```{r}
+ggplot(aes(x=month, fill=item_id), data = train_data)+
+  geom_bar()
+```
