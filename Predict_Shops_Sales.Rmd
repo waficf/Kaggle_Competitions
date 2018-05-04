@@ -53,21 +53,30 @@ train_data$year <- format(as.Date(train_data$date,format="%d.%m.%Y"), "%Y")
 train_data$day <- factor(train_data$day)
 train_data$month <- factor(train_data$month)
 train_data$year <- factor(train_data$year)
-```
 
-```{r}
+train_data$shop_id <- factor(train_data$shop_id)
+train_data$item_id <- factor(train_data$item_id)
+train_data$item_category_id <- factor(train_data$item_category_id)
+
 str(train_data)
 ```
+
 
 ```{r}
 head(train_data)
 ```
 
 ```{r}
-ggplot(aes(x=year, fill=item_id), data = train_data)+
-  geom_bar()
+yearly <- group_by(train_data, year)
+summarise(yearly, items_sold = sum(item_cnt_day))
 ```
+
 ```{r}
-ggplot(aes(x=month, fill=item_id), data = train_data)+
-  geom_bar()
+str(test)
 ```
+
+```{r}
+head(test, 50)
+```
+
+

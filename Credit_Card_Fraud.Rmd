@@ -1,0 +1,22 @@
+# Titanic Machine Leaning First Submission
+***
+This is my first Kaggle submission, I really learned a lot from practicing
+here than from reading several books. You can see that I have taken lots of 
+chunks of code from Megan Risdal submission and I tried to run every algorithm
+I learned so far for the sake of practice
+
+## 1. Importing the needed libraries
+```{r}
+library(dplyr)
+library(ggplot2) # Data visualization
+```
+
+## 2. Importing Data
+```{r}
+credit_data <- read.csv('/Users/wafic/Downloads/data/creditcard.csv')
+```
+
+```{r}
+str(credit_data)
+```
+

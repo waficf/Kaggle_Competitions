@@ -1,0 +1,148 @@
+# Housing Prices Submission
+***
+
+## 1. Importing the needed libraries
+```{r eval=FALSE, Packages}
+library(dplyr)
+library(ggplot2) # Data visualization
+library(VIM)  # Plots missing data
+library(mice)
+library(ggthemes)
+library(scales) # Scaling yaxis
+library(caret)
+```
+
+## 2. Importing data
+```{r}
+train <- read.csv('/Users/wafic/Downloads/data/House_Prices/train.csv', stringsAsFactors = F, na.strings=c("","NA"))
+test <- read.csv('/Users/wafic/Downloads/data/House_Prices/test.csv', stringsAsFactors = F, na.strings=c("","NA"))
+submission <- read.csv('/Users/wafic/Downloads/data/House_Prices/sample_submission.csv', stringsAsFactors = F, na.strings=c("","NA"))
+```
+
+```{r}
+str(train)
+```
+
+## 3. Investigating dataset
+```{r}
+nulls <- function(x){
+  sum(is.na(x))
+}
+
+sapply(train, nulls)
+```
+
+```{r}
+aggr(train, col=c('navyblue','red'), numbers=TRUE, sortVars=TRUE, labels=names(train), cex.axis=.6, gap=4, ylab=c("Histogram of missing data","Pattern"))
+```
+
+
+## 4. Imputing missing datapoints
+```{r}
+train$Alley[is.na(train$Alley)] <- 'None'
+
+train$FireplaceQu[is.na(train$FireplaceQu)] <- 'None'
+
+train$Fence[is.na(train$Fence)] <- 'None'
+
+train$MiscFeature[is.na(train$MiscFeature)] <- 'None'
+
+train$PoolQC[is.na(train$PoolQC)] <- 'None'
+
+train$GarageCond[is.na(train$GarageCond)] <- 'None'
+train$GarageQual[is.na(train$GarageQual)] <- 'None'
+train$GarageFinish[is.na(train$GarageFinish)] <- 'None'
+train$GarageType[is.na(train$GarageType)] <- 'None'
+train$GarageYrBlt[is.na(train$GarageYrBlt)] <- 0
+
+train$BsmtFinType1[is.na(train$BsmtFinType1)] <- 'None'
+train$BsmtFinType1[is.na(train$BsmtFinType1)] <- 'None'
+train$BsmtFinType2[is.na(train$BsmtFinType2)] <- 'None'
+train$BsmtExposure[is.na(train$BsmtExposure)] <- 'None'
+train$BsmtCond[is.na(train$BsmtCond)] <- 'None'
+train$BsmtQual[is.na(train$BsmtQual)] <- 'None'
+
+train$MasVnrType[is.na(train$MasVnrType)] <- 'None'
+```
+
+```{r}
+pmiss <- function(x){
+  sum(is.na(x))/length(x)*100
+}
+pmiss(train$LotFrontage)
+```
+
+```{r}
+tempdata <- mice(train, m=5, maxit=50, meth='pmm',seed=500)
+tempdata$imp$LotFrontage
+```
+
+
+```{r}
+completedData <- complete(tempdata,1)
+train$LotFrontage <- completedData$LotFrontage
+train$MasVnrArea <- completedData$MasVnrArea
+
+train$Electrical <-factor(train$Electrical)
+table(train$Electrical)
+```
+
+```{r}
+train$Electrical[is.na(train$Electrical)] <- 'SBrkr'
+```
+
+
+```{r}
+sapply(train, nulls)
+```
+
+```{r}
+aggr(train, col=c('navyblue','red'), numbers=TRUE, sortVars=TRUE, labels=names(train), cex.axis=.6, gap=4, ylab=c("Histogram of missing data","Pattern"))
+```
+
+```{r}
+str(train)
+```
+
+```{r}
+ggplot(train, aes(x='', y=SalePrice))+
+  geom_boxplot()+
+  scale_y_continuous('House Prices',labels = dollar)+
+  theme_minimal()
+```
+
+
+```{r}
+ggplot(train, aes(x=factor(SaleCondition), y=SalePrice))+
+  geom_boxplot()+
+  scale_y_continuous('House Prices',labels = dollar)+
+  theme_minimal()
+```
+
+```{r}
+ggplot(train, aes(x=factor(SaleType), y=SalePrice))+
+  geom_boxplot()+
+  scale_y_continuous('House Prices',labels = dollar)+
+  theme_minimal()
+```
+
+I can see 4 types of variable:
+1. Neigjborhood features
+2. House features
+3. Sales features
+
+```{r}
+train[sapply(train, is.numeric)]
+```
+
+```{r}
+train[sapply(train, is.character)]
+```
+
+1. CONVERT CHARACTER TO FACTOR IF REQURIED
+2. GROUP VARIABLE INTO GROUPS AS BELOW
+
+I can see 4 types of variable:
+1. Neigjborhood features
+2. House features
+3. Sales features
