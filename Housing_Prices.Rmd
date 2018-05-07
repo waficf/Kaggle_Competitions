@@ -23,7 +23,7 @@ submission <- read.csv('/Users/wafic/Downloads/data/House_Prices/sample_submissi
 str(train)
 ```
 
-## 3. Investigating dataset
+## 3. Removing Nulls
 ```{r}
 nulls <- function(x){
   sum(is.na(x))
@@ -99,10 +99,11 @@ sapply(train, nulls)
 ```{r}
 aggr(train, col=c('navyblue','red'), numbers=TRUE, sortVars=TRUE, labels=names(train), cex.axis=.6, gap=4, ylab=c("Histogram of missing data","Pattern"))
 ```
+## 5. Pre-processing
 
-```{r}
-str(train)
-```
+#### 5.1 Creating dummy variables
+
+
 
 ```{r}
 ggplot(train, aes(x='', y=SalePrice))+
@@ -110,34 +111,51 @@ ggplot(train, aes(x='', y=SalePrice))+
   scale_y_continuous('House Prices',labels = dollar)+
   theme_minimal()
 ```
+```{r}
+summary(train$SalePrice)
+```
 
 
 ```{r}
-ggplot(train, aes(x=factor(SaleCondition), y=SalePrice))+
-  geom_boxplot()+
-  scale_y_continuous('House Prices',labels = dollar)+
-  theme_minimal()
+train_numeric <- train[sapply(train, is.numeric)]
 ```
+
 
 ```{r}
-ggplot(train, aes(x=factor(SaleType), y=SalePrice))+
-  geom_boxplot()+
-  scale_y_continuous('House Prices',labels = dollar)+
-  theme_minimal()
+correlationMatrix <- cor(train_numeric[-38])
+highlyCorrelated <- findCorrelation(correlationMatrix, cutoff=0.75)
+highlyCorrelated
+head(train_numeric[27])
 ```
 
-I can see 4 types of variable:
-1. Neigjborhood features
-2. House features
-3. Sales features
+
 
 ```{r}
-train[sapply(train, is.numeric)]
+train_factor <- train[sapply(train, is.character)]
 ```
 
+
 ```{r}
-train[sapply(train, is.character)]
+prop_table <- function(x){
+  prop.table(table(x))*100
+}
+sapply(train_factor, prop_table)
 ```
+
+#### 5.2 Rank Features By Importance
+```{r}
+control <- trainControl(method="repeatedcv", number=10, repeats=3)
+# train the model
+model <- train(SalePrice~., data=train_numeric, method="glmboost", trControl=control)
+# estimate variable importance
+plot(varImp(model), top = 15)
+```
+
+## 6. Feature Selection
+```{r}
+
+```
+
 
 1. CONVERT CHARACTER TO FACTOR IF REQURIED
 2. GROUP VARIABLE INTO GROUPS AS BELOW
