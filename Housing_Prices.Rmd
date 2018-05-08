@@ -12,7 +12,7 @@ library(scales) # Scaling yaxis
 library(caret)
 ```
 
-## 2. Importing data
+## 2. Importing data & basic EDA
 ```{r}
 train <- read.csv('/Users/wafic/Downloads/data/House_Prices/train.csv', stringsAsFactors = F, na.strings=c("","NA"))
 test <- read.csv('/Users/wafic/Downloads/data/House_Prices/test.csv', stringsAsFactors = F, na.strings=c("","NA"))
@@ -20,10 +20,35 @@ submission <- read.csv('/Users/wafic/Downloads/data/House_Prices/sample_submissi
 ```
 
 ```{r}
+dim(train)
+```
+
+
+```{r}
 str(train)
 ```
 
-## 3. Removing Nulls
+```{r}
+ggplot(train, aes(x='', y=SalePrice))+
+  geom_boxplot()+
+  scale_y_continuous('House Prices',labels = dollar)+
+  theme_minimal()
+```
+
+```{r}
+train_factor <- train[sapply(train, is.character)]
+
+prop_table <- function(x){
+  prop.table(table(x))*100
+}
+sapply(train_factor, prop_table)
+```
+We can see lot of categorical variables with one dominant factor that takes
+almost all the frequencies of a predictor which makes its useless
+
+## 3. Feature Engineering & Selection
+
+#### 3.1 Removing nulls
 ```{r}
 nulls <- function(x){
   sum(is.na(x))
@@ -37,7 +62,6 @@ aggr(train, col=c('navyblue','red'), numbers=TRUE, sortVars=TRUE, labels=names(t
 ```
 
 
-## 4. Imputing missing datapoints
 ```{r}
 train$Alley[is.na(train$Alley)] <- 'None'
 
@@ -99,48 +123,78 @@ sapply(train, nulls)
 ```{r}
 aggr(train, col=c('navyblue','red'), numbers=TRUE, sortVars=TRUE, labels=names(train), cex.axis=.6, gap=4, ylab=c("Histogram of missing data","Pattern"))
 ```
-## 5. Pre-processing
 
-#### 5.1 Creating dummy variables
-
-
-
+#### 3.2 Creating Dummy Variables for Regression Model
 ```{r}
-ggplot(train, aes(x='', y=SalePrice))+
-  geom_boxplot()+
-  scale_y_continuous('House Prices',labels = dollar)+
-  theme_minimal()
+dummies <- dummyVars(~., data = train)
+train_dum <- data.frame(predict(dummies, newdata = train))
+dim(train_dum)
 ```
+Since, it is mostly a regression model that will be implmented to predict prices
+of houses, we created dummy variables for all these categorical variables to be 
+used in our model which ended up with 303 variables
+
+#### 3.3 Zero- and Near Zero-Variance Predictors
 ```{r}
-summary(train$SalePrice)
+nzv <- nearZeroVar(train_dum, saveMetrics= TRUE)
+nzv[ nzv[,"nzv"] > 0, ]
+```
+We cannot see any zero variance predictors but 176 are near zero which implies
+that lots of these dummy variables have very large frequency ratio and 
+highly-unbalanced data and the percent of unique values approaches zero meaning
+that these predictors provide little value for predicting the price.
+
+On the other hand I am very reluctant to remove them because as we see above, 
+there are lots of houses with outlier prices and I am afraid these small
+near zero variables are causing these differences. For example, if I look at 
+the variables heatingfloor below, I see 1 in 1,460 observations but we know
+that heating floor is a very expe
+
+```{r}
+print(table(train_dum$HeatingFloor))
+print(train_dum[train_dum$HeatingFloor == 1,]$SalePrice)
+```
+I expected it to be an outlier but the house price was in our IQR range. I will
+not keep all these 176 variables, nor I will drop them all. For this I will
+choose variables with requency ratio above 
+
+```{r}
+# Remove the above 50 variables
+x <- nzv[ nzv[,"nzv"] + nzv[,"freqRatio"] > 300,]
+filteredDescr <- train_dum[, -x]
+dim(filteredDescr)s
 ```
 
-
 ```{r}
-train_numeric <- train[sapply(train, is.numeric)]
+
 ```
+After removing the 
 
-
+#### 3.3 Remove highly correlated variables
 ```{r}
-correlationMatrix <- cor(train_numeric[-38])
-highlyCorrelated <- findCorrelation(correlationMatrix, cutoff=0.75)
+correlationMatrix <- cor(train_dum[-38])
+highlyCorrelated <- findCorrelation(correlationMatrix, cutoff=0.8)
 highlyCorrelated
-head(train_numeric[27])
 ```
 
-
-
+#### 3.4 Centering and Scaling variables
 ```{r}
-train_factor <- train[sapply(train, is.character)]
+
 ```
 
 
+#### 3.3 Creating new features
 ```{r}
-prop_table <- function(x){
-  prop.table(table(x))*100
-}
-sapply(train_factor, prop_table)
+
 ```
+
+#### 3.5 Feature Transformation
+```{r}
+
+```
+
+
+## 4 Variable importance
 
 #### 5.2 Rank Features By Importance
 ```{r}
@@ -150,17 +204,3 @@ model <- train(SalePrice~., data=train_numeric, method="glmboost", trControl=con
 # estimate variable importance
 plot(varImp(model), top = 15)
 ```
-
-## 6. Feature Selection
-```{r}
-
-```
-
-
-1. CONVERT CHARACTER TO FACTOR IF REQURIED
-2. GROUP VARIABLE INTO GROUPS AS BELOW
-
-I can see 4 types of variable:
-1. Neigjborhood features
-2. House features
-3. Sales features
