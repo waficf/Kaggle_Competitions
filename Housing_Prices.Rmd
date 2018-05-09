@@ -10,6 +10,9 @@ library(mice)
 library(ggthemes)
 library(scales) # Scaling yaxis
 library(caret)
+library(ggcorrplot)
+library(grid)
+library(gridExtra)
 ```
 
 ## 2. Importing data & basic EDA
@@ -124,7 +127,77 @@ sapply(train, nulls)
 aggr(train, col=c('navyblue','red'), numbers=TRUE, sortVars=TRUE, labels=names(train), cex.axis=.6, gap=4, ylab=c("Histogram of missing data","Pattern"))
 ```
 
-#### 3.2 Creating Dummy Variables for Regression Model
+
+#### 3.3 Creating new features
+
+## 3.3.1 Getting the age of the property as of 2018
+```{r}
+train$PropAge <- as.numeric(format(as.Date(Sys.time()),format="%Y"))-train$YearBuilt
+
+ggplot(train, aes(x=PropAge, y=SalePrice))+
+  geom_point()+
+  scale_y_continuous('House Prices',labels = dollar)+
+  theme_minimal()
+```
+
+
+## 3.3.2 Assigning a varibale reovate to every property
+```{r}
+train$RenovAge <- as.numeric(format(as.Date(Sys.time()),format="%Y"))-train$YearRemodAdd
+
+train$Renovate <- ifelse(train$RenovAge == train$PropAge, 'No', 'Yes')
+
+ggplot(train, aes(x=PropAge, y=SalePrice, colour=factor(Renovate)))+
+  geom_point()+
+  scale_y_continuous('House Prices',labels = dollar)+
+  theme_minimal()
+```
+Mainly all houses above 70 years has been renovated
+
+```{r}
+ggplot(train, aes(x='', y=SalePrice))+
+  geom_boxplot()+
+  theme_minimal()+
+  scale_y_continuous('House Prices',labels = dollar)+
+  theme_minimal()+
+  facet_grid(. ~ Renovate)
+```
+Since all houses above 70 has been renovated and those below 70 mostly havent
+been, there is slight difference in the median price
+
+## 3.3.3 Putting houses in different sizes
+```{r}
+ggplot(train, aes(x='', y=LotArea))+
+  geom_boxplot()+
+  theme_minimal()
+```
+There seems to be very little discrepancy in the sizes of the property
+
+```{r}
+ggplot(train, aes(x=LotArea, y=SalePrice))+
+  geom_point()+
+  theme_minimal()+
+  scale_y_continuous('House Prices',labels = dollar)
+```
+Very little number of huge houses but some are small and very expensive
+
+```{r}
+# divide houses into 3 groups of sizes
+summary(train$LotArea)
+```
+```{r}
+train$Size[train$LotArea < 12000] <- 'Normal'
+train$Size[train$LotArea > 12000] <- 'Huge'
+table(train$Size)
+```
+
+#### 
+
+## 3.4.4 Putting houses in different Price ranges
+
+## 3.4 Preprocessing
+
+#### 3.4.1 Creating Dummy Variables for Regression Model
 ```{r}
 dummies <- dummyVars(~., data = train)
 train_dum <- data.frame(predict(dummies, newdata = train))
@@ -134,9 +207,9 @@ Since, it is mostly a regression model that will be implmented to predict prices
 of houses, we created dummy variables for all these categorical variables to be 
 used in our model which ended up with 303 variables
 
-#### 3.3 Zero- and Near Zero-Variance Predictors
+#### 3.4.2 Zero- and Near Zero-Variance Predictors
 ```{r}
-nzv <- nearZeroVar(train_dum, saveMetrics= TRUE)
+nzv <- nearZeroVar(train_dum, saveMetrics= T)
 nzv[ nzv[,"nzv"] > 0, ]
 ```
 We cannot see any zero variance predictors but 176 are near zero which implies
@@ -154,36 +227,50 @@ that heating floor is a very expe
 print(table(train_dum$HeatingFloor))
 print(train_dum[train_dum$HeatingFloor == 1,]$SalePrice)
 ```
-I expected it to be an outlier but the house price was in our IQR range. I will
+I expected it to be an outlier but the house price was in our IQR. I will
 not keep all these 176 variables, nor I will drop them all. For this I will
-choose variables with requency ratio above 
+choose variables with requency ratio above 300 to drop
+
+
 
 ```{r}
-# Remove the above 50 variables
 x <- nzv[ nzv[,"nzv"] + nzv[,"freqRatio"] > 300,]
-filteredDescr <- train_dum[, -x]
-dim(filteredDescr)s
+drops<-names(data.frame(t(x)))
+drops
 ```
+We will drop 51 feature that are of frequency ratio above 300
 
 ```{r}
-
+train_v1<- train_dum[ , !(names(train_dum) %in% drops)]
+dim(train_dum);dim(train_v1)
 ```
-After removing the 
+After removing the 51 features we have 253 features
 
-#### 3.3 Remove highly correlated variables
+#### 3.4.3 Remove highly correlated variables
 ```{r}
-correlationMatrix <- cor(train_dum[-38])
+correlationMatrix <- round(cor(train_v1[-253]),1)
 highlyCorrelated <- findCorrelation(correlationMatrix, cutoff=0.8)
 highlyCorrelated
 ```
+These are predictors that are more than 80% correlated among themselves which 
+makes them useless for our prediction
 
-#### 3.4 Centering and Scaling variables
 ```{r}
-
+train_v2 <- train_v1[,-highlyCorrelated]
+dim(train_v2)
 ```
 
 
-#### 3.3 Creating new features
+
+
+
+
+
+
+
+
+
+#### 3.5 Centering and Scaling variables
 ```{r}
 
 ```
