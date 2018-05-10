@@ -38,6 +38,28 @@ ggplot(train, aes(x='', y=SalePrice))+
   theme_minimal()
 ```
 
+```{r echo = FALSE, message=FALSE, warning=FALSE, error=FALSE,fig.width=7, fig.height=4}
+ggplot(train, aes(x=reorder(Neighborhood, SalePrice, FUN = median), y=SalePrice))+
+  geom_boxplot()+
+  theme_classic()+
+  scale_y_continuous('House Prices',labels = dollar)
+```
+
+```{r echo = FALSE, message=FALSE, warning=FALSE, error=FALSE,fig.width=7, fig.height=4}
+ggplot(train, aes(x=reorder(MSZoning, SalePrice, FUN = median), y=SalePrice))+
+  geom_boxplot()+
+  theme_classic()+
+  scale_y_continuous('House Prices',labels = dollar)
+```
+
+```{r echo = FALSE, message=FALSE, warning=FALSE, error=FALSE,fig.width=7, fig.height=4}
+ggplot(train, aes(x=reorder(Foundation, SalePrice, FUN = median), y=SalePrice))+
+  geom_boxplot()+
+  theme_classic()+
+  scale_y_continuous('House Prices',labels = dollar)
+```
+
+
 ```{r}
 train_factor <- train[sapply(train, is.character)]
 
@@ -49,7 +71,7 @@ sapply(train_factor, prop_table)
 We can see lot of categorical variables with one dominant factor that takes
 almost all the frequencies of a predictor which makes its useless
 
-## 3. Feature Engineering & Selection
+## 3. Data Cleaning & Feature Engineering
 
 #### 3.1 Removing nulls
 ```{r}
@@ -128,9 +150,9 @@ aggr(train, col=c('navyblue','red'), numbers=TRUE, sortVars=TRUE, labels=names(t
 ```
 
 
-#### 3.3 Creating new features
+#### 3.2 Creating new features
 
-## 3.3.1 Getting the age of the property as of 2018
+#### 3.2.1 Getting the age of the property as of 2018
 ```{r}
 train$PropAge <- as.numeric(format(as.Date(Sys.time()),format="%Y"))-train$YearBuilt
 
@@ -141,7 +163,7 @@ ggplot(train, aes(x=PropAge, y=SalePrice))+
 ```
 
 
-## 3.3.2 Assigning a varibale reovate to every property
+#### 3.2.2 Assigning a varibale reovate to every property
 ```{r}
 train$RenovAge <- as.numeric(format(as.Date(Sys.time()),format="%Y"))-train$YearRemodAdd
 
@@ -165,7 +187,7 @@ ggplot(train, aes(x='', y=SalePrice))+
 Since all houses above 70 has been renovated and those below 70 mostly havent
 been, there is slight difference in the median price
 
-## 3.3.3 Putting houses in different sizes
+#### 3.2.3 Putting houses in different sizes
 ```{r}
 ggplot(train, aes(x='', y=LotArea))+
   geom_boxplot()+
@@ -182,22 +204,33 @@ ggplot(train, aes(x=LotArea, y=SalePrice))+
 Very little number of huge houses but some are small and very expensive
 
 ```{r}
-# divide houses into 3 groups of sizes
-summary(train$LotArea)
-```
-```{r}
 train$Size[train$LotArea < 12000] <- 'Normal'
-train$Size[train$LotArea > 12000] <- 'Huge'
+train$Size[train$LotArea >= 12000] <- 'Huge'
 table(train$Size)
 ```
 
-#### 
+#### 3.2.4 Garage Age
+```{r}
+train$GarageAge <- as.numeric(format(as.Date(Sys.time()),format="%Y"))-train$GarageYrBlt
+train$GarageAge[train$GarageAge == 2018] <- 0
+summary(train$GarageAge)
+```
 
-## 3.4.4 Putting houses in different Price ranges
+#### 3.2.5 Number of Years from when the property was Sold
+```{r}
+train$YearsSold <- as.numeric(format(as.Date(Sys.time()),format="%Y"))-train$YrSold
+summary(train$YearsSold)
+```
 
-## 3.4 Preprocessing
+```{r}
+ggplot(train, aes(x=YearsSold, y=SalePrice, fill=factor(YearsSold)))+
+  geom_boxplot()
+```
+This variable looks of little affect on the price
 
-#### 3.4.1 Creating Dummy Variables for Regression Model
+## 4. Preprocessing
+
+#### 4.1 Creating Dummy Variables for Regression Model
 ```{r}
 dummies <- dummyVars(~., data = train)
 train_dum <- data.frame(predict(dummies, newdata = train))
@@ -205,9 +238,9 @@ dim(train_dum)
 ```
 Since, it is mostly a regression model that will be implmented to predict prices
 of houses, we created dummy variables for all these categorical variables to be 
-used in our model which ended up with 303 variables
+used in our model which ended up with 310 variables
 
-#### 3.4.2 Zero- and Near Zero-Variance Predictors
+#### 4.2 Zero- and Near Zero-Variance Predictors
 ```{r}
 nzv <- nearZeroVar(train_dum, saveMetrics= T)
 nzv[ nzv[,"nzv"] > 0, ]
@@ -231,8 +264,6 @@ I expected it to be an outlier but the house price was in our IQR. I will
 not keep all these 176 variables, nor I will drop them all. For this I will
 choose variables with requency ratio above 300 to drop
 
-
-
 ```{r}
 x <- nzv[ nzv[,"nzv"] + nzv[,"freqRatio"] > 300,]
 drops<-names(data.frame(t(x)))
@@ -244,9 +275,10 @@ We will drop 51 feature that are of frequency ratio above 300
 train_v1<- train_dum[ , !(names(train_dum) %in% drops)]
 dim(train_dum);dim(train_v1)
 ```
-After removing the 51 features we have 253 features
+After removing the 51 features we have 261 features
 
-#### 3.4.3 Remove highly correlated variables
+
+#### 4.3 Remove highly correlated variables
 ```{r}
 correlationMatrix <- round(cor(train_v1[-253]),1)
 highlyCorrelated <- findCorrelation(correlationMatrix, cutoff=0.8)
@@ -260,34 +292,29 @@ train_v2 <- train_v1[,-highlyCorrelated]
 dim(train_v2)
 ```
 
-
-
-
-
-
-
-
-
-
-
-#### 3.5 Centering and Scaling variables
+#### 4.4 Dropping a variable month sold
 ```{r}
-
-```
-
-#### 3.5 Feature Transformation
-```{r}
-
+train_v2 <- subset(train_v2, select=-c(MoSold, Id))
+dim(train_v2)
 ```
 
 
-## 4 Variable importance
 
-#### 5.2 Rank Features By Importance
+## 5 Feature Scaling and Selection
+
+#### 3.4.4 Centering and Scaling variables and PCA
 ```{r}
-control <- trainControl(method="repeatedcv", number=10, repeats=3)
-# train the model
-model <- train(SalePrice~., data=train_numeric, method="glmboost", trControl=control)
-# estimate variable importance
-plot(varImp(model), top = 15)
+preprocessParams <- preProcess(train_v2[-221], method=c("center", "scale", "pca"))
+# summarize transform parameters
+print(preprocessParams)
+# transform the dataset using the parameters
+train_v3 <- predict(preprocessParams, train_v2[-221])
+# summarize the transformed dataset
+dim(train_v3)
+
+train_data <- cbind(train_v3, train_v2[221])
 ```
+
+## 6 Model Training and Predictions
+
+
