@@ -13,67 +13,102 @@ library(caret)
 library(ggcorrplot)
 library(grid)
 library(gridExtra)
+library(corrplot)
 ```
 
-## 2. Importing data & basic EDA
+## 2. Importing data
 ```{r}
 train <- read.csv('/Users/wafic/Downloads/data/House_Prices/train.csv', stringsAsFactors = F, na.strings=c("","NA"))
 test <- read.csv('/Users/wafic/Downloads/data/House_Prices/test.csv', stringsAsFactors = F, na.strings=c("","NA"))
-submission <- read.csv('/Users/wafic/Downloads/data/House_Prices/sample_submission.csv', stringsAsFactors = F, na.strings=c("","NA"))
+
+test$SalePrice <- NA
+full <- rbind(train, test)
+dim(full)
 ```
 
+
+#### 2.1 Overview of the variables available
 ```{r}
-dim(train)
+str(full)
 ```
 
-
+#### 2.2 Factor variables
 ```{r}
-str(train)
+full_factor <- train[sapply(full, is.character)]
+
+prop_table <- function(x){
+  prop.table(table(x))*100
+}
+sapply(full_factor, prop_table)
+```
+We can see lot of categorical variables with one dominant factor that takes
+almost all the frequencies of a predictor which makes its useless
+
+#### 2.4 Continous variables
+```{r}
+full_numeric <- train[sapply(full, is.numeric)]
+summary(full_numeric)
 ```
 
+## 3. EDA
+
+#### 3.1 Measuring Spread of Prices
 ```{r}
 ggplot(train, aes(x='', y=SalePrice))+
   geom_boxplot()+
   scale_y_continuous('House Prices',labels = dollar)+
   theme_minimal()
 ```
+We can see some outliers but those two the top are way far from the rest,
+Those are houses above $700,000.
 
-```{r echo = FALSE, message=FALSE, warning=FALSE, error=FALSE,fig.width=7, fig.height=4}
-ggplot(train, aes(x=reorder(Neighborhood, SalePrice, FUN = median), y=SalePrice))+
-  geom_boxplot()+
-  theme_classic()+
-  scale_y_continuous('House Prices',labels = dollar)
-```
-
-```{r echo = FALSE, message=FALSE, warning=FALSE, error=FALSE,fig.width=7, fig.height=4}
-ggplot(train, aes(x=reorder(MSZoning, SalePrice, FUN = median), y=SalePrice))+
-  geom_boxplot()+
-  theme_classic()+
-  scale_y_continuous('House Prices',labels = dollar)
-```
-
-```{r echo = FALSE, message=FALSE, warning=FALSE, error=FALSE,fig.width=7, fig.height=4}
-ggplot(train, aes(x=reorder(Foundation, SalePrice, FUN = median), y=SalePrice))+
-  geom_boxplot()+
-  theme_classic()+
-  scale_y_continuous('House Prices',labels = dollar)
-```
-
-
+#### 3.2 Numeric variables with high correlation
 ```{r}
-train_factor <- train[sapply(train, is.character)]
+corr<-cor(as.matrix(full_numeric))
+corr_mtx <- as.matrix(sort(corr[,'SalePrice'], decreasing = TRUE))
 
-prop_table <- function(x){
-  prop.table(table(x))*100
-}
-sapply(train_factor, prop_table)
+CorHigh <- names(which(apply(corr_mtx, 1, function(x) abs(x)>0.5)))
+corr <- corr[CorHigh, CorHigh]
+corrplot.mixed(corr, tl.col="black", tl.pos = "lt")
 ```
-We can see lot of categorical variables with one dominant factor that takes
-almost all the frequencies of a predictor which makes its useless
+The top three numeric variable that are correlated with SalePrice are the 
+house Overall Quality, the Living Area and the size of Garage in terms of cars
 
-## 3. Data Cleaning & Feature Engineering
+#### 3.3 Overall Quality in relationship with the Price
+```{r}
+ggplot(train, aes(x=factor(OverallQual), y=SalePrice))+
+  geom_boxplot()+
+  theme_minimal()+
+  scale_y_continuous('House Prices',labels = dollar)
+```
 
-#### 3.1 Removing nulls
+
+#### 3.4 Prices in relationship with the living area in every house
+```{r}
+ggplot(train, aes(x=GrLivArea, y=SalePrice))+
+  geom_point()+
+  theme_minimal()+
+  scale_y_continuous('House Prices',labels = dollar)+
+  geom_smooth(method='lm',formula=y~x)
+```
+
+#### 3.5 Prices in relationship with Garage Size
+```{r}
+ggplot(train, aes(x=reorder(GarageCars, SalePrice, median), y=SalePrice))+
+  geom_boxplot()+
+  theme_minimal()+
+  scale_y_continuous('House Prices',labels = dollar)
+```
+
+
+
+
+
+
+
+
+
+## 3. Data Cleaning from Nulls
 ```{r}
 nulls <- function(x){
   sum(is.na(x))
@@ -149,10 +184,25 @@ sapply(train, nulls)
 aggr(train, col=c('navyblue','red'), numbers=TRUE, sortVars=TRUE, labels=names(train), cex.axis=.6, gap=4, ylab=c("Histogram of missing data","Pattern"))
 ```
 
+## 4. REMOVEEEE    EDA (Trying to detect what variables has any relationship with Price)
 
-#### 3.2 Creating new features
 
-#### 3.2.1 Getting the age of the property as of 2018
+#### 4.2 Prices spread among neighborhoods
+```{r echo = FALSE, message=FALSE, warning=FALSE, error=FALSE,fig.width=7, fig.height=4}
+ggplot(train, aes(x=reorder(Neighborhood, SalePrice, FUN = median), y=SalePrice))+
+  geom_boxplot()+
+  theme_classic()+
+  scale_y_continuous('House Prices',labels = dollar)
+```
+The median price differs by neighborhood which is expected but what is to be 
+notes is that there is some serious discrepancies in some neighborhoods.
+
+
+
+
+## 5. Creating new features
+
+#### 5.1 Feature 1: Getting the age of the property as of 2018
 ```{r}
 train$PropAge <- as.numeric(format(as.Date(Sys.time()),format="%Y"))-train$YearBuilt
 
@@ -163,7 +213,7 @@ ggplot(train, aes(x=PropAge, y=SalePrice))+
 ```
 
 
-#### 3.2.2 Assigning a varibale reovate to every property
+#### 5.2 Feature 2: Assigning a variable Reovate to every property
 ```{r}
 train$RenovAge <- as.numeric(format(as.Date(Sys.time()),format="%Y"))-train$YearRemodAdd
 
@@ -187,36 +237,15 @@ ggplot(train, aes(x='', y=SalePrice))+
 Since all houses above 70 has been renovated and those below 70 mostly havent
 been, there is slight difference in the median price
 
-#### 3.2.3 Putting houses in different sizes
-```{r}
-ggplot(train, aes(x='', y=LotArea))+
-  geom_boxplot()+
-  theme_minimal()
-```
-There seems to be very little discrepancy in the sizes of the property
 
-```{r}
-ggplot(train, aes(x=LotArea, y=SalePrice))+
-  geom_point()+
-  theme_minimal()+
-  scale_y_continuous('House Prices',labels = dollar)
-```
-Very little number of huge houses but some are small and very expensive
-
-```{r}
-train$Size[train$LotArea < 12000] <- 'Normal'
-train$Size[train$LotArea >= 12000] <- 'Huge'
-table(train$Size)
-```
-
-#### 3.2.4 Garage Age
+#### 5.3 Feature 3: Garage Age
 ```{r}
 train$GarageAge <- as.numeric(format(as.Date(Sys.time()),format="%Y"))-train$GarageYrBlt
 train$GarageAge[train$GarageAge == 2018] <- 0
 summary(train$GarageAge)
 ```
 
-#### 3.2.5 Number of Years from when the property was Sold
+#### 5.4 Feature 4: Number of Years from when the property was Sold
 ```{r}
 train$YearsSold <- as.numeric(format(as.Date(Sys.time()),format="%Y"))-train$YrSold
 summary(train$YearsSold)
@@ -228,9 +257,35 @@ ggplot(train, aes(x=YearsSold, y=SalePrice, fill=factor(YearsSold)))+
 ```
 This variable looks of little affect on the price
 
-## 4. Preprocessing
+#### 5.5 Feature 5: Price per sqft
+```{r}
+train$PriceSQFT <- round(train$SalePrice / train$LotArea, 1)
+```
 
-#### 4.1 Creating Dummy Variables for Regression Model
+```{r warning=FALSE, error=FALSE,fig.width=7, fig.height=4}
+ggplot(train, aes(x=reorder(Neighborhood, PriceSQFT, FUN = median), y=PriceSQFT))+
+  geom_boxplot()+
+  theme_classic()
+```
+
+
+
+
+
+## 6. Preprocessing
+
+#### 6.1 Removing Outliers
+```{r}
+# These are very huge houses with cheap prices
+train[train$GrLivArea > 4500,]
+```
+
+```{r}
+# Remove them here
+```
+
+
+#### 6.2 Creating Dummy Variables for Regression Model
 ```{r}
 dummies <- dummyVars(~., data = train)
 train_dum <- data.frame(predict(dummies, newdata = train))
@@ -240,7 +295,7 @@ Since, it is mostly a regression model that will be implmented to predict prices
 of houses, we created dummy variables for all these categorical variables to be 
 used in our model which ended up with 310 variables
 
-#### 4.2 Zero- and Near Zero-Variance Predictors
+#### 6.3 Zero- and Near Zero-Variance Predictors
 ```{r}
 nzv <- nearZeroVar(train_dum, saveMetrics= T)
 nzv[ nzv[,"nzv"] > 0, ]
@@ -278,7 +333,7 @@ dim(train_dum);dim(train_v1)
 After removing the 51 features we have 261 features
 
 
-#### 4.3 Remove highly correlated variables
+#### 6.4 Remove highly correlated variables
 ```{r}
 correlationMatrix <- round(cor(train_v1[-253]),1)
 highlyCorrelated <- findCorrelation(correlationMatrix, cutoff=0.8)
@@ -292,17 +347,21 @@ train_v2 <- train_v1[,-highlyCorrelated]
 dim(train_v2)
 ```
 
-#### 4.4 Dropping a variable month sold
+#### 6.5 Dropping a variable month sold
 ```{r}
 train_v2 <- subset(train_v2, select=-c(MoSold, Id))
 dim(train_v2)
 ```
 
+> Before running any model for predictions, lets state the points we have so far
+agreed on:
+- Size of the house has little to do with the price
+- Neighborhood has quite some positive effect on price
+- 
 
+## 7. Feature Scaling and Selection
 
-## 5 Feature Scaling and Selection
-
-#### 3.4.4 Centering and Scaling variables and PCA
+#### 7.1 Centering and Scaling variables and PCA
 ```{r}
 preprocessParams <- preProcess(train_v2[-221], method=c("center", "scale", "pca"))
 # summarize transform parameters
