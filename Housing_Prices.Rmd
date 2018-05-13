@@ -26,41 +26,13 @@ full <- rbind(train, test)
 dim(full)
 ```
 
+## 3. Exploring Variables
 
-#### 2.1 Overview of the variables available
-```{r}
-str(full)
-```
-
-#### 2.2 Factor variables
-```{r}
-full_factor <- train[sapply(full, is.character)]
-
-prop_table <- function(x){
-  prop.table(table(x))*100
-}
-sapply(full_factor, prop_table)
-```
-We can see lot of categorical variables with one dominant factor that takes
-almost all the frequencies of a predictor which makes its useless
-
-#### 2.4 Continous variables
+#### 3.1 Continous Variables
 ```{r}
 full_numeric <- train[sapply(full, is.numeric)]
 summary(full_numeric)
 ```
-
-## 3. EDA
-
-#### 3.1 Measuring Spread of Prices
-```{r}
-ggplot(train, aes(x='', y=SalePrice))+
-  geom_boxplot()+
-  scale_y_continuous('House Prices',labels = dollar)+
-  theme_minimal()
-```
-We can see some outliers but those two the top are way far from the rest,
-Those are houses above $700,000.
 
 #### 3.2 Numeric variables with high correlation
 ```{r}
@@ -71,28 +43,35 @@ CorHigh <- names(which(apply(corr_mtx, 1, function(x) abs(x)>0.5)))
 corr <- corr[CorHigh, CorHigh]
 corrplot.mixed(corr, tl.col="black", tl.pos = "lt")
 ```
-The top three numeric variable that are correlated with SalePrice are the 
-house Overall Quality, the Living Area and the size of Garage in terms of cars
 
-#### 3.3 Overall Quality in relationship with the Price
+#### 3.3 Spread of the Response Variable
 ```{r}
-ggplot(train, aes(x=factor(OverallQual), y=SalePrice))+
+ggplot(full, aes(x='', y=SalePrice))+
+  geom_boxplot()+
+  scale_y_continuous('House Prices',labels = dollar)+
+  theme_minimal()
+```
+
+#### 3.4 Overall Quality in relationship with the Price
+```{r}
+ggplot(full, aes(x=factor(OverallQual), y=SalePrice))+
   geom_boxplot()+
   theme_minimal()+
   scale_y_continuous('House Prices',labels = dollar)
 ```
 
 
-#### 3.4 Prices in relationship with the living area in every house
+#### 3.5 Prices in relationship with the living area in every house
 ```{r}
-ggplot(train, aes(x=GrLivArea, y=SalePrice))+
+ggplot(full, aes(x=GrLivArea, y=SalePrice))+
   geom_point()+
   theme_minimal()+
   scale_y_continuous('House Prices',labels = dollar)+
   geom_smooth(method='lm',formula=y~x)
 ```
 
-#### 3.5 Prices in relationship with Garage Size
+
+#### 3.6 Prices in relationship with Garage Size
 ```{r}
 ggplot(train, aes(x=reorder(GarageCars, SalePrice, median), y=SalePrice))+
   geom_boxplot()+
@@ -103,88 +82,92 @@ ggplot(train, aes(x=reorder(GarageCars, SalePrice, median), y=SalePrice))+
 
 
 
+## 4. Imputing Missing Points
 
-
-
-
-
-## 3. Data Cleaning from Nulls
+#### 4.1 Detecting Missing data points in every variable
 ```{r}
 nulls <- function(x){
   sum(is.na(x))
 }
 
-sapply(train, nulls)
+sapply(full, nulls)
 ```
 
 ```{r}
-aggr(train, col=c('navyblue','red'), numbers=TRUE, sortVars=TRUE, labels=names(train), cex.axis=.6, gap=4, ylab=c("Histogram of missing data","Pattern"))
+aggr(full, col=c('navyblue','red'), numbers=TRUE, sortVars=TRUE, labels=names(train), cex.axis=.6, gap=4, ylab=c("Histogram of missing data","Pattern"))
+```
+Not all the above null variables are missing data points, lot of these factor
+variables are not available for some houses and thus are written as NA
+- In the first part of imputing missing data points I will replace these nulls
+with "None"
+- In the seond part I will impute continous variables using mice
+- In the third part I will impute the factor variables with the levels that has 
+the most occurance. Although it is a dirty approach to imputing missing
+datapoints, the issue is that these are only 1 point missing and going beyond
+this method will provide no added value when training the model
+
+#### 4.2 Replacing NA with "None"" for factor variables
+```{r}
+full$Alley[is.na(full$Alley)] <- 'None'
+
+full$FireplaceQu[is.na(full$FireplaceQu)] <- 'None'
+
+full$Fence[is.na(full$Fence)] <- 'None'
+
+full$MiscFeature[is.na(full$MiscFeature)] <- 'None'
+
+full$PoolQC[is.na(full$PoolQC)] <- 'None'
+
+full$GarageCond[is.na(full$GarageCond)] <- 'None'
+full$GarageQual[is.na(full$GarageQual)] <- 'None'
+full$GarageFinish[is.na(full$GarageFinish)] <- 'None'
+full$GarageType[is.na(full$GarageType)] <- 'None'
+full$GarageYrBlt[is.na(full$GarageYrBlt)] <- 0
+
+full$BsmtFinType1[is.na(full$BsmtFinType1)] <- 'None'
+full$BsmtFinType1[is.na(full$BsmtFinType1)] <- 'None'
+full$BsmtFinType2[is.na(full$BsmtFinType2)] <- 'None'
+full$BsmtExposure[is.na(full$BsmtExposure)] <- 'None'
+full$BsmtCond[is.na(full$BsmtCond)] <- 'None'
+full$BsmtQual[is.na(full$BsmtQual)] <- 'None'
+
+full$MasVnrType[is.na(full$MasVnrType)] <- 'None'
 ```
 
-
+#### 4.3 Replacing Continous Variables using mice
 ```{r}
-train$Alley[is.na(train$Alley)] <- 'None'
-
-train$FireplaceQu[is.na(train$FireplaceQu)] <- 'None'
-
-train$Fence[is.na(train$Fence)] <- 'None'
-
-train$MiscFeature[is.na(train$MiscFeature)] <- 'None'
-
-train$PoolQC[is.na(train$PoolQC)] <- 'None'
-
-train$GarageCond[is.na(train$GarageCond)] <- 'None'
-train$GarageQual[is.na(train$GarageQual)] <- 'None'
-train$GarageFinish[is.na(train$GarageFinish)] <- 'None'
-train$GarageType[is.na(train$GarageType)] <- 'None'
-train$GarageYrBlt[is.na(train$GarageYrBlt)] <- 0
-
-train$BsmtFinType1[is.na(train$BsmtFinType1)] <- 'None'
-train$BsmtFinType1[is.na(train$BsmtFinType1)] <- 'None'
-train$BsmtFinType2[is.na(train$BsmtFinType2)] <- 'None'
-train$BsmtExposure[is.na(train$BsmtExposure)] <- 'None'
-train$BsmtCond[is.na(train$BsmtCond)] <- 'None'
-train$BsmtQual[is.na(train$BsmtQual)] <- 'None'
-
-train$MasVnrType[is.na(train$MasVnrType)] <- 'None'
-```
-
-```{r}
-pmiss <- function(x){
-  sum(is.na(x))/length(x)*100
-}
-pmiss(train$LotFrontage)
-```
-
-```{r}
-tempdata <- mice(train, m=5, maxit=50, meth='pmm',seed=500)
+tempdata <- mice(full[-81], m=2, maxit=50, meth='pmm',seed=500)
 tempdata$imp$LotFrontage
-```
 
-
-```{r}
 completedData <- complete(tempdata,1)
-train$LotFrontage <- completedData$LotFrontage
-train$MasVnrArea <- completedData$MasVnrArea
-
-train$Electrical <-factor(train$Electrical)
-table(train$Electrical)
+full$LotFrontage <- completedData$LotFrontage
+full$MasVnrArea <- completedData$MasVnrArea
+full$BsmtFinSF1 <- completedData$BsmtFinSF1
+full$BsmtFinSF2 <- completedData$BsmtFinSF2
+full$BsmtUnfSF <- completedData$BsmtUnfSF
+full$TotalBsmtSF <- completedData$TotalBsmtSF
+full$BsmtFullBath <- completedData$BsmtFullBath
+full$BsmtHalfBath <- completedData$BsmtHalfBath
+full$GarageCars <- completedData$GarageCars
+full$GarageArea <- completedData$GarageArea
 ```
 
+#### 4.4 Replacing Factor variables with level of highest occurance
 ```{r}
-train$Electrical[is.na(train$Electrical)] <- 'SBrkr'
+full$Electrical[is.na(full$Electrical)] <- 'SBrkr'
+full$Utilities[is.na(full$Utilities)] <- 'AllPub'
+full$MSZoning[is.na(full$MSZoning)] <- 'RL'
+full$Exterior1st[is.na(full$Exterior1st)] <- 'VinylSd'
+full$Exterior2nd[is.na(full$Exterior2nd)] <- 'VinylSd'
+full$KitchenQual[is.na(full$KitchenQual)] <- 'TA'
+full$Functional[is.na(full$Functional)] <- 'Typ'
+full$SaleType[is.na(full$SaleType)] <- 'WD'
+sapply(full, nulls)
 ```
+All predictor variables are imputed and fixed
 
 
-```{r}
-sapply(train, nulls)
-```
 
-```{r}
-aggr(train, col=c('navyblue','red'), numbers=TRUE, sortVars=TRUE, labels=names(train), cex.axis=.6, gap=4, ylab=c("Histogram of missing data","Pattern"))
-```
-
-## 4. REMOVEEEE    EDA (Trying to detect what variables has any relationship with Price)
 
 
 #### 4.2 Prices spread among neighborhoods
@@ -377,3 +360,17 @@ train_data <- cbind(train_v3, train_v2[221])
 ## 6 Model Training and Predictions
 
 
+
+
+
+#### 3.2.1 Exploring Factor variables
+```{r}
+full_factor <- train[sapply(full, is.character)]
+
+prop_table <- function(x){
+  prop.table(table(x))*100
+}
+sapply(full_factor, prop_table)
+```
+We can see lot of categorical variables with one dominant factor that takes
+almost all the frequencies of a predictor which makes its useless
