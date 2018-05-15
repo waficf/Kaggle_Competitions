@@ -198,28 +198,20 @@ levels(full$OverallCond) <- list('Very Excellent' =10, 'Excellent'=9, 'Very Good
 table(full$OverallCond)
 ```
 
-#### 5.3 Year Built, Year Renovated, Year Garage Built and Year Sold
-```{r}
-full$YearBuilt <- factor(full$YearBuilt)
-full$YearRemodAdd <- factor(full$YearRemodAdd)
-full$GarageYrBlt <- factor(full$GarageYrBlt)
-full$YrSold <- factor(full$YrSold)
-```
-
-#### 5.4 Total number of rooms in living area
+#### 5.3 Total number of rooms in living area
 ```{r}
 full$TotRmsAbvGrd <- factor(full$TotRmsAbvGrd)
 table(full$TotRmsAbvGrd)
 ```
 
-#### 5.5 Total number of bathrooms in living area
+#### 5.4 Total number of bathrooms in living area
 ```{r}
 full$FullBath <- factor(full$FullBath)
 table(full$FullBath)
 ```
 
 
-#### 5.6 Extracting factor variables
+#### 5.5 Extracting factor variables
 ```{r}
 full_factor <- train[sapply(full, is.character)]
 
@@ -246,13 +238,14 @@ ggplot(full_notnull, aes(x=reorder(Neighborhood, SalePrice, FUN = median), y=Sal
 The median price differs by neighborhood which is expected but what is to be 
 notes is that there is some serious discrepancies in some neighborhoods.
 
+#### 5.8 Number of houses per neighborhood
 ```{r echo = FALSE, message=FALSE, warning=FALSE, error=FALSE, fig.width=7, fig.height=4}
 ggplot(full, aes(Neighborhood))+
   geom_bar()+
   theme_classic()
 ```
 
-#### 5.8 Number of rooms in respect to house prices
+#### 5.9 Number of rooms in respect to house prices
 ```{r}
 ggplot(full, aes(x=TotRmsAbvGrd, y=SalePrice))+
   geom_boxplot()+
@@ -263,7 +256,7 @@ The more rooms the higher the price, but we can see that when the number of
 rooms become crazy for example 8 rooms and above the price tends to be more 
 disperse and less compact
 
-#### 5.9 Number of bathrooms in respect to house prices
+#### 5.10 Number of bathrooms in respect to house prices
 ```{r}
 ggplot(full, aes(x=FullBath, y=SalePrice))+
   geom_boxplot()+
@@ -271,9 +264,9 @@ ggplot(full, aes(x=FullBath, y=SalePrice))+
   scale_y_continuous('House Prices',labels = dollar)
 ```
 
-#### 5.10 Number of houses built per year
+#### 5.11 Number of houses built per year
 ```{r echo = FALSE, message=FALSE, warning=FALSE, error=FALSE, fig.width=7, fig.height=4}
-ggplot(full, aes(YearBuilt))+
+ggplot(full, aes(factor(YearBuilt)))+
   geom_bar()+
   theme_classic()+
   theme(axis.text.x = element_text(angle = 90, hjust = 5))
@@ -287,22 +280,22 @@ bubble
 
 #### 6.1 Feature 1: Getting the age of the property as of 2018
 ```{r}
-train$PropAge <- as.numeric(format(as.Date(Sys.time()),format="%Y"))-train$YearBuilt
+full$PropAge <- as.numeric(format(as.Date(Sys.time()),format="%Y"))-full$YearBuilt
 
-ggplot(train, aes(x=PropAge, y=SalePrice))+
+ggplot(full, aes(x=PropAge, y=SalePrice))+
   geom_point()+
   scale_y_continuous('House Prices',labels = dollar)+
   theme_minimal()
 ```
 
 
-#### 6.2 Feature 2: Assigning a variable Reovate to every property
+#### 6.2 Feature 2: Assigning a variable Renovate to every property
 ```{r}
-train$RenovAge <- as.numeric(format(as.Date(Sys.time()),format="%Y"))-train$YearRemodAdd
+full$RenovAge <- as.numeric(format(as.Date(Sys.time()),format="%Y"))-full$YearRemodAdd
 
-train$Renovate <- ifelse(train$RenovAge == train$PropAge, 'No', 'Yes')
+full$Renovate <- ifelse(full$RenovAge == full$PropAge, 'No', 'Yes')
 
-ggplot(train, aes(x=PropAge, y=SalePrice, colour=factor(Renovate)))+
+ggplot(full, aes(x=PropAge, y=SalePrice, colour=factor(Renovate)))+
   geom_point()+
   scale_y_continuous('House Prices',labels = dollar)+
   theme_minimal()
@@ -310,7 +303,7 @@ ggplot(train, aes(x=PropAge, y=SalePrice, colour=factor(Renovate)))+
 Mainly all houses above 70 years has been renovated
 
 ```{r}
-ggplot(train, aes(x='', y=SalePrice))+
+ggplot(full, aes(x='', y=SalePrice))+
   geom_boxplot()+
   theme_minimal()+
   scale_y_continuous('House Prices',labels = dollar)+
@@ -320,36 +313,25 @@ ggplot(train, aes(x='', y=SalePrice))+
 Since all houses above 70 has been renovated and those below 70 mostly havent
 been, there is slight difference in the median price
 
+#### 6.3 Feature 3: Price per sqft of living area
+```{r echo = FALSE, message=FALSE, warning=FALSE, error=FALSE, fig.width=7, fig.height=4}
+full$PriceSQFT <- round(full$SalePrice / full$GrLivArea, 1)
 
-#### 7.3 Feature 3: Garage Age
-```{r}
-train$GarageAge <- as.numeric(format(as.Date(Sys.time()),format="%Y"))-train$GarageYrBlt
-train$GarageAge[train$GarageAge == 2018] <- 0
-summary(train$GarageAge)
-```
+full_notnull <- filter(full, !is.na(SalePrice))
 
-#### 7.4 Feature 4: Number of Years from when the property was Sold
-```{r}
-train$YearsSold <- as.numeric(format(as.Date(Sys.time()),format="%Y"))-train$YrSold
-summary(train$YearsSold)
-```
-
-```{r}
-ggplot(train, aes(x=YearsSold, y=SalePrice, fill=factor(YearsSold)))+
-  geom_boxplot()
-```
-This variable looks of little affect on the price
-
-#### 7.5 Feature 5: Price per sqft
-```{r}
-train$PriceSQFT <- round(train$SalePrice / train$LotArea, 1)
-```
-
-```{r warning=FALSE, error=FALSE,fig.width=7, fig.height=4}
-ggplot(train, aes(x=reorder(Neighborhood, PriceSQFT, FUN = median), y=PriceSQFT))+
+ggplot(full_notnull, aes(x=reorder(Neighborhood, PriceSQFT, FUN = median), y=PriceSQFT))+
   geom_boxplot()+
   theme_classic()
 ```
+
+#### 6.4 Feature 4: 
+```{r}
+str(full)
+```
+
+
+
+
 
 
 ## 8. Preprocessing Predictor Variables
