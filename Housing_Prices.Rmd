@@ -228,9 +228,7 @@ below.
 #### 5.7 Prices spread and number of houses among neighborhoods
 ```{r echo = FALSE, message=FALSE, warning=FALSE, error=FALSE, fig.width=7, fig.height=4}
 # Removing datapoint with null values in sales
-full_notnull <- filter(full, !is.na(SalePrice))
-
-ggplot(full_notnull, aes(x=reorder(Neighborhood, SalePrice, FUN = median), y=SalePrice))+
+ggplot(full[!is.na(full$SalePrice),], aes(x=reorder(Neighborhood, SalePrice, FUN = median), y=SalePrice))+
   geom_boxplot()+
   theme_classic()+
   scale_y_continuous('House Prices',labels = dollar)
@@ -287,7 +285,8 @@ ggplot(full, aes(x=PropAge, y=SalePrice))+
   scale_y_continuous('House Prices',labels = dollar)+
   theme_minimal()
 ```
-
+We can see some negative correlation as the house gets older it gets less 
+expensive
 
 #### 6.2 Feature 2: Assigning a variable Renovate to every property
 ```{r}
@@ -295,7 +294,7 @@ full$RenovAge <- as.numeric(format(as.Date(Sys.time()),format="%Y"))-full$YearRe
 
 full$Renovate <- ifelse(full$RenovAge == full$PropAge, 'No', 'Yes')
 
-ggplot(full, aes(x=PropAge, y=SalePrice, colour=factor(Renovate)))+
+ggplot(full[!is.na(full$SalePrice),], aes(x=PropAge, y=SalePrice, colour=factor(Renovate)))+
   geom_point()+
   scale_y_continuous('House Prices',labels = dollar)+
   theme_minimal()
@@ -313,37 +312,94 @@ ggplot(full, aes(x='', y=SalePrice))+
 Since all houses above 70 has been renovated and those below 70 mostly havent
 been, there is slight difference in the median price
 
-#### 6.3 Feature 3: Price per sqft of living area
-```{r echo = FALSE, message=FALSE, warning=FALSE, error=FALSE, fig.width=7, fig.height=4}
-full$PriceSQFT <- round(full$SalePrice / full$GrLivArea, 1)
 
-full_notnull <- filter(full, !is.na(SalePrice))
-
-ggplot(full_notnull, aes(x=reorder(Neighborhood, PriceSQFT, FUN = median), y=PriceSQFT))+
-  geom_boxplot()+
-  theme_classic()
-```
-
-#### 6.4 Feature 4: 
+#### 6.3 Feature 3: Total House Area in Square Feet
 ```{r}
-str(full)
+full$TotalSqFeet <- full$GrLivArea + full$TotalBsmtSF
+
+ggplot(full, aes(x='', y=TotalSqFeet))+
+  geom_boxplot()
 ```
 
 
+```{r}
+ggplot(full[!is.na(full$SalePrice),], aes(x=TotalSqFeet, y=SalePrice))+
+  geom_point()+
+  geom_smooth(method='lm',formula=y~x)
+```
+Similar to the living area, when we added the total basement we can still see 
+a clear linear relationship betwen the size of the house and its price. But 
+looking at size vs price is a not how to evaluate the price of a house. Usually
+it is the price per SQFT which is a better indicator
+
+#### 6.4 Feature 4: Price per sqft of total square feet area
+```{r}
+full$PriceSQFT <- round(full$SalePrice / full$TotalSqFeet, 1)
+
+ggplot(full[!is.na(full$SalePrice),], aes(x=TotalSqFeet, y=PriceSQFT))+
+  geom_point()+
+  scale_y_continuous('Price per SQFT',labels = dollar)
+```
+Unlike Salesprice, Price per SQFT is no linear relationship with TotalSqfoot, 
+which is a great way of the data telling us that there are lots of other 
+variables that will eventually affect the price
 
 
+## 7. Some More Plots with Price per SQFT
+Before running any ML algorithm, I want to know what is a main driver of price,
+Because obvoiusly it aint size as we saw in price per SQFT. 
 
+#### 7.1 Neighborhood with age and renovate
+```{r echo = FALSE, message=FALSE, warning=FALSE, error=FALSE, fig.width=7, fig.height=4}
+ggplot(full[!is.na(full$SalePrice),], aes(x=PropAge, y=PriceSQFT, colour=factor(Renovate)))+
+  geom_point()+
+  scale_y_continuous('Price per SQFT',labels = dollar)+
+  geom_hline(yintercept=median(full[!is.na(full$SalePrice),]$PriceSQFT), linetype="dashed", color = "red")+
+  facet_wrap(~Neighborhood)
+```
+Looking at these 2 plots, I am not sure if renovating your house will usually
+increase its price because if we look at the green dots we see that they are
+almost all below the median Price per SQTF. So if we look at the old town, we
+see all houses are renovated and below median price, while on the other hand
+Crawfor houses are renovated and most above the median price. 
+Looks like neighborhood is an important predictor of price
+
+#### 7.2 Quality vs Price per SQFT
+```{r}
+ggplot(full[!is.na(full$SalePrice),], aes(x=TotalSqFeet, y=PriceSQFT))+
+  geom_point()+
+  scale_y_continuous('Price per SQFT',labels = dollar)+
+  geom_hline(yintercept=median(full[!is.na(full$SalePrice),]$PriceSQFT), linetype="dashed", color = "red")+
+  facet_wrap(~OverallCond)
+```
+The majority of houses range between good and average but in general we can say 
+that quality affect price per SQFT because for lower quality building, we can 
+see that the price almost always is below median
+
+#### 7.3 Kitchen Quality vs Price per SQFT
+```{r}
+ggplot(full[!is.na(full$SalePrice),], aes(x=TotalSqFeet, y=PriceSQFT))+
+  geom_point()+
+  scale_y_continuous('Price per SQFT',labels = dollar)+
+  geom_hline(yintercept=median(full[!is.na(full$SalePrice),]$PriceSQFT), linetype="dashed", color = "red")+
+  facet_wrap(~KitchenQual)
+```
+Looks like the quality of the kitchen can be an important predictor because
+for Typical/Average and faid kitchen quality, the prices are below mostly below
+median price per SQFT
 
 ## 8. Preprocessing Predictor Variables
 
 #### 8.1 Removing Outliers
 ```{r}
-# These are very huge houses with cheap prices
-train[train$GrLivArea > 4500,]
+full[!is.na(full$SalePrice),][full[!is.na(full$SalePrice),]$TotalSqFeet > 7500,]
 ```
+These are very huge houses with cheap prices detected in above plots
 
 ```{r}
-# Remove them here
+# Remove the above from the dataset
+full <- full[-c(524, 1299),]
+dim(full)
 ```
 
 #### 8.2 Creating Dummy Variables for Regression Model
