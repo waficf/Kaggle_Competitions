@@ -404,102 +404,165 @@ dim(full)
 
 #### 8.2 Creating Dummy Variables for Regression Model
 ```{r}
-dummies <- dummyVars(~., data = train)
-train_dum <- data.frame(predict(dummies, newdata = train))
-dim(train_dum)
+dummies <- dummyVars(~., data = full)
+full <- data.frame(predict(dummies, newdata = full))
+dim(full)
 ```
 Since, it is mostly a regression model that will be implmented to predict prices
 of houses, we created dummy variables for all these categorical variables to be 
-used in our model which ended up with 310 variables
+used in our model which ended up with 344 variable
 
-#### 7.3 Zero- and Near Zero-Variance Predictors
+#### 8.3 Zero- and Near Zero-Variance Predictors
 ```{r}
-nzv <- nearZeroVar(train_dum, saveMetrics= T)
+nzv <- nearZeroVar(full, saveMetrics= T)
 nzv[ nzv[,"nzv"] > 0, ]
 ```
-We cannot see any zero variance predictors but 176 are near zero which implies
+We can see only 1  zero variance predictors and 201 are near zero which implies
 that lots of these dummy variables have very large frequency ratio and 
 highly-unbalanced data and the percent of unique values approaches zero meaning
 that these predictors provide little value for predicting the price.
 
-On the other hand I am very reluctant to remove them because as we see above, 
-there are lots of houses with outlier prices and I am afraid these small
-near zero variables are causing these differences. For example, if I look at 
-the variables heatingfloor below, I see 1 in 1,460 observations but we know
-that heating floor is a very expe
 
 ```{r}
-print(table(train_dum$HeatingFloor))
-print(train_dum[train_dum$HeatingFloor == 1,]$SalePrice)
+y <- nzv[ nzv[,"zeroVar"],]
+drops<-names(data.frame(t(y)))
+
+full<- full[ , !(names(full) %in% drops)]
+dim(full)
 ```
-I expected it to be an outlier but the house price was in our IQR. I will
-not keep all these 176 variables, nor I will drop them all. For this I will
-choose variables with requency ratio above 300 to drop
+Drop the zero variance variable
 
 ```{r}
-x <- nzv[ nzv[,"nzv"] + nzv[,"freqRatio"] > 300,]
+x <- nzv[nzv[,"nzv"] + nzv[,"freqRatio"] > 30,]
 drops<-names(data.frame(t(x)))
 drops
 ```
-We will drop 51 feature that are of frequency ratio above 300
+We will drop 175 feature that are of frequency ratio above 30
 
 ```{r}
-train_v1<- train_dum[ , !(names(train_dum) %in% drops)]
-dim(train_dum);dim(train_v1)
+full<- full[ , !(names(full) %in% drops)]
+dim(full)
 ```
-After removing the 51 features we have 261 features
+After removing the 175 features we have 168 features
 
-
-#### 6.4 Remove highly correlated variables
+#### 8.4 Remove highly correlated variables
 ```{r}
-correlationMatrix <- round(cor(train_v1[-253]),1)
+correlationMatrix <- round(cor(full[-c(162, 168)]),1)
 highlyCorrelated <- findCorrelation(correlationMatrix, cutoff=0.8)
-highlyCorrelated
+head(full[highlyCorrelated])
 ```
-These are predictors that are more than 80% correlated among themselves which 
-makes them useless for our prediction
+These are the 26 predictors that are more than 80% correlated with other
+predictors and which might cause multicollinearity in our model 
 
 ```{r}
-train_v2 <- train_v1[,-highlyCorrelated]
-dim(train_v2)
-```
+full <- full[,-highlyCorrelated]
+dim(full)
 
-#### 6.5 Dropping a variable month sold
+head(full)
+```
+Our model will try to predict house prices based on these 142 variables
+
+#### 8.5 Scaling and Centering variables
 ```{r}
-train_v2 <- subset(train_v2, select=-c(MoSold, Id))
-dim(train_v2)
+preprocessParams <- preProcess(full[-c(142, 138)], method=c("center", "scale"))
+preprocessParams
 ```
 
-> Before running any model for predictions, lets state the points we have so far
-agreed on:
-- Size of the house has little to do with the price
-- Neighborhood has quite some positive effect on price
-- 
-
-
-
-
-
-
-
-## 7. Feature Scaling and Selection
-
-#### 7.1 Centering and Scaling variables and PCA
 ```{r}
-preprocessParams <- preProcess(train_v2[-221], method=c("center", "scale", "pca"))
-# summarize transform parameters
-print(preprocessParams)
-# transform the dataset using the parameters
-train_v3 <- predict(preprocessParams, train_v2[-221])
-# summarize the transformed dataset
-dim(train_v3)
-
-train_data <- cbind(train_v3, train_v2[221])
+full_norm <- predict(preprocessParams, full)
+dim(full_norm)
 ```
 
-## 6 Model Training and Predictions
+## 9. Model Training and Predictions
+
+#### 9.1 Splitting the above data to train vs test datasets
+```{r}
+train_new <- full[!is.na(full$SalePrice),]
+test_new <- full[is.na(full$SalePrice),]
+
+dim(train_new);dim(test_new)
+```
+
+#### 9.2 Boosted Generalized Linear Model
+```{r}
+set.seed(1492)
+### set training parameters
+ctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 5)
+
+### train the models
+set.seed(300)
+
+# Use the expand.grid to specify the search space  
+glmBoostGrid = expand.grid(mstop = c(50, 100, 150, 200),
+                               prune = c('yes', 'no'))
+
+
+glmBoostFit <- train(SalePrice ~ ., 
+              data = train_new, 
+              method = "glmboost",
+              metric = 'RMSE', 
+              trControl = ctrl, 
+              tuneGrid = glmBoostGrid)
+
+glmBoostFit
+```
+
+
+```{r}
+## Predict using the test data
+plot(varImp(glmBoostFit), top = 10)
+
+```
 
 
 
+```{r}
+set.seed(1492)
+### set training parameters
+ctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 5)
 
+### train the models
+set.seed(300)
+
+# Use the expand.grid to specify the search space  
+pcrGrid = expand.grid(ncomp = c(10, 40, 80, 140))
+
+pcrFit <- train(SalePrice ~ ., 
+              data = train_new, 
+              method = "pcr",
+              metric = 'RMSE', 
+              trControl = ctrl,
+              tuneGrid = pcrGrid)
+
+pcrFit
+```
+
+```{r}
+predict(pcrFit, test_new)
+```
+
+
+```{r}
+set.seed(1492)
+### set training parameters
+ctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 5)
+
+### train the models
+set.seed(300)
+
+# Use the expand.grid to specify the search space  
+lmGrid = expand.grid(intercept = c(FALSE, TRUE))
+
+lmFit <- train(SalePrice ~ ., 
+              data = train_new, 
+              method = "lm",
+              metric = 'RMSE', 
+              trControl = ctrl,
+              tuneGrid = lmGrid)
+
+lmFit
+```
+```{r}
+predict(lmFit, test_new)
+```
 
