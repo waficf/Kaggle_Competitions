@@ -564,7 +564,7 @@ pcrFit
 ```
 
 ```{r}
-plot(varImp(lasso_mod,scale=F), 15)
+plot(varImp(pcrFit,scale=F), 15)
 ```
 
 
