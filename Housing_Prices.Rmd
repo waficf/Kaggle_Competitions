@@ -21,6 +21,10 @@ library(corrplot)
 train <- read.csv('/Users/wafic/Downloads/data/House_Prices/train.csv', stringsAsFactors = F, na.strings=c("","NA"))
 test <- read.csv('/Users/wafic/Downloads/data/House_Prices/test.csv', stringsAsFactors = F, na.strings=c("","NA"))
 
+test_labels <- test$Id
+test$Id <- NULL
+train$Id <- NULL
+
 test$SalePrice <- NA
 full <- rbind(train, test)
 dim(full)
@@ -30,13 +34,13 @@ dim(full)
 
 #### 3.1 Extracting a numerical variables dataframe
 ```{r}
-full_numeric <- train[sapply(full, is.numeric)]
+full_numeric <- full[sapply(full, is.numeric)]
 summary(full_numeric)
 ```
 
 #### 3.2 Numeric variables with high correlation
 ```{r}
-corr<-cor(as.matrix(full_numeric))
+corr<-cor(as.matrix(full_numeric[!is.na(full_numeric$SalePrice),]))
 corr_mtx <- as.matrix(sort(corr[,'SalePrice'], decreasing = TRUE))
 
 CorHigh <- names(which(apply(corr_mtx, 1, function(x) abs(x)>0.5)))
@@ -46,7 +50,7 @@ corrplot.mixed(corr, tl.col="black", tl.pos = "lt")
 
 #### 3.3 Spread of the Response Variable
 ```{r}
-ggplot(full, aes(x='', y=SalePrice))+
+ggplot(full[!is.na(full$SalePrice),], aes(x='', y=SalePrice))+
   geom_boxplot()+
   scale_y_continuous('House Prices',labels = dollar)+
   theme_minimal()
@@ -54,7 +58,7 @@ ggplot(full, aes(x='', y=SalePrice))+
 
 #### 3.4 Overall Quality in relationship with the Price
 ```{r}
-ggplot(full, aes(x=factor(OverallQual), y=SalePrice))+
+ggplot(full[!is.na(full$SalePrice),], aes(x=factor(OverallQual), y=SalePrice))+
   geom_boxplot()+
   theme_minimal()+
   scale_y_continuous('House Prices',labels = dollar)
@@ -63,7 +67,7 @@ ggplot(full, aes(x=factor(OverallQual), y=SalePrice))+
 
 #### 3.5 Prices in relationship with the living area in every house
 ```{r}
-ggplot(full, aes(x=GrLivArea, y=SalePrice))+
+ggplot(full[!is.na(full$SalePrice),], aes(x=GrLivArea, y=SalePrice))+
   geom_point()+
   theme_minimal()+
   scale_y_continuous('House Prices',labels = dollar)+
@@ -75,7 +79,7 @@ is relatively low
 
 #### 3.6 Prices in relationship with Garage Size
 ```{r}
-ggplot(train, aes(x=factor(GarageCars), y=SalePrice))+
+ggplot(full[!is.na(full$SalePrice),], aes(x=factor(GarageCars), y=SalePrice))+
   geom_boxplot()+
   theme_minimal()+
   scale_y_continuous('House Prices',labels = dollar)
@@ -83,7 +87,7 @@ ggplot(train, aes(x=factor(GarageCars), y=SalePrice))+
 
 #### 3.6 Prices in relationship with size of the basement
 ```{r}
-ggplot(full, aes(x=TotalBsmtSF, y=SalePrice))+
+ggplot(full[!is.na(full$SalePrice),], aes(x=TotalBsmtSF, y=SalePrice))+
   geom_point()+
   theme_minimal()+
   scale_y_continuous('House Prices',labels = dollar)+
@@ -147,7 +151,7 @@ full$MasVnrType[is.na(full$MasVnrType)] <- 'None'
 
 #### 4.3 Replacing Continous Variables using mice
 ```{r}
-tempdata <- mice(full[-81], m=2, maxit=50, meth='pmm',seed=500)
+tempdata <- mice(full[-80], m=2, maxit=50, meth='pmm',seed=500)
 
 completedData <- complete(tempdata,1)
 full$LotFrontage <- completedData$LotFrontage
@@ -200,13 +204,11 @@ table(full$OverallCond)
 
 #### 5.3 Total number of rooms in living area
 ```{r}
-full$TotRmsAbvGrd <- factor(full$TotRmsAbvGrd)
 table(full$TotRmsAbvGrd)
 ```
 
 #### 5.4 Total number of bathrooms in living area
 ```{r}
-full$FullBath <- factor(full$FullBath)
 table(full$FullBath)
 ```
 
@@ -245,7 +247,7 @@ ggplot(full, aes(Neighborhood))+
 
 #### 5.9 Number of rooms in respect to house prices
 ```{r}
-ggplot(full, aes(x=TotRmsAbvGrd, y=SalePrice))+
+ggplot(full[!is.na(full$SalePrice),], aes(x=factor(TotRmsAbvGrd), y=SalePrice))+
   geom_boxplot()+
   theme_classic()+
   scale_y_continuous('House Prices',labels = dollar)
@@ -256,7 +258,7 @@ disperse and less compact
 
 #### 5.10 Number of bathrooms in respect to house prices
 ```{r}
-ggplot(full, aes(x=FullBath, y=SalePrice))+
+ggplot(full[!is.na(full$SalePrice),], aes(x=factor(FullBath), y=SalePrice))+
   geom_boxplot()+
   theme_classic()+
   scale_y_continuous('House Prices',labels = dollar)
@@ -280,7 +282,7 @@ bubble
 ```{r}
 full$PropAge <- as.numeric(format(as.Date(Sys.time()),format="%Y"))-full$YearBuilt
 
-ggplot(full, aes(x=PropAge, y=SalePrice))+
+ggplot(full[!is.na(full$SalePrice),], aes(x=PropAge, y=SalePrice))+
   geom_point()+
   scale_y_continuous('House Prices',labels = dollar)+
   theme_minimal()
@@ -302,7 +304,7 @@ ggplot(full[!is.na(full$SalePrice),], aes(x=PropAge, y=SalePrice, colour=factor(
 Mainly all houses above 70 years has been renovated
 
 ```{r}
-ggplot(full, aes(x='', y=SalePrice))+
+ggplot(full[!is.na(full$SalePrice),], aes(x='', y=SalePrice))+
   geom_boxplot()+
   theme_minimal()+
   scale_y_continuous('House Prices',labels = dollar)+
@@ -399,91 +401,148 @@ These are very huge houses with cheap prices detected in above plots
 ```{r}
 # Remove the above from the dataset
 full <- full[-c(524, 1299),]
-dim(full)
+head(full$PriceSQFT)
 ```
 
-#### 8.2 Creating Dummy Variables for Regression Model
 ```{r}
-dummies <- dummyVars(~., data = full)
-full <- data.frame(predict(dummies, newdata = full))
+full <- full[-85]
 dim(full)
+head(full)
+```
+For now I will go without the price per SQFT because it can be a response
+variable more than a predictor
+
+#### 8.2 Remove highly correlated numerical variables
+```{r}
+# Identifying numerical Predictors
+numeric_pred <- full[-c(80)][sapply(full[-c(80)], is.numeric)]
+
+correlationMatrix <- round(cor(numeric_pred),1)
+highlyCorrelated <- findCorrelation(correlationMatrix, cutoff=0.8)
+head(full[highlyCorrelated])
+```
+We have 4 variables highly correlated and shall be dropped
+
+```{r}
+num_df <- numeric_pred[,-highlyCorrelated]
+num_df <- num_df[-c(80)]
+head(num_df)
+```
+We have 33 numeric variables left
+
+#### 8.3 Scaling and Centering numerical variables
+```{r}
+preprocessParams <- preProcess(num_df, method=c("center", "scale"))
+preprocessParams
+```
+
+```{r}
+num_df <- predict(preprocessParams, num_df)
+str(num_df)
+```
+
+#### 8.4 Creating Dummy Variables for Regression Model
+```{r}
+# Identifying categorical Predictors
+chracter_pred <- full[sapply(full, is.character)]
+factor_pred <- full[sapply(full, is.factor)]
+
+cat_pred<- cbind(chracter_pred, factor_pred)
+
+dummies <- dummyVars(~., data = cat_pred)
+dum_df <- data.frame(predict(dummies, newdata = cat_pred))
+dim(dum_df)
 ```
 Since, it is mostly a regression model that will be implmented to predict prices
 of houses, we created dummy variables for all these categorical variables to be 
-used in our model which ended up with 344 variable
+used in our model which ended up with 287 variable
 
-#### 8.3 Zero- and Near Zero-Variance Predictors
+#### 8.5 Zero and Near Zero-Variance Predictors
 ```{r}
-nzv <- nearZeroVar(full, saveMetrics= T)
+nzv <- nearZeroVar(dum_df, saveMetrics= T)
 nzv[ nzv[,"nzv"] > 0, ]
 ```
-We can see only 1  zero variance predictors and 201 are near zero which implies
+We can see only 1 zero variance predictors and 181 are near zero which implies
 that lots of these dummy variables have very large frequency ratio and 
 highly-unbalanced data and the percent of unique values approaches zero meaning
 that these predictors provide little value for predicting the price.
-
 
 ```{r}
 y <- nzv[ nzv[,"zeroVar"],]
 drops<-names(data.frame(t(y)))
 
-full<- full[ , !(names(full) %in% drops)]
-dim(full)
+dum_df<- dum_df[ , !(names(dum_df) %in% drops)]
+dim(dum_df)
 ```
-Drop the zero variance variable
+We dropped the zero variance variable
 
 ```{r}
 x <- nzv[nzv[,"nzv"] + nzv[,"freqRatio"] > 30,]
-drops<-names(data.frame(t(x)))
-drops
+drops_1<-names(data.frame(t(x)))
+drops_1
 ```
-We will drop 175 feature that are of frequency ratio above 30
+We will drop 154 feature that are of frequency ratio above 30
 
 ```{r}
-full<- full[ , !(names(full) %in% drops)]
-dim(full)
+dum_df<- dum_df[ , !(names(dum_df) %in% drops_1)]
+dim(dum_df)
 ```
-After removing the 175 features we have 168 features
+After removing the 175 features we have 132 factor variables features
 
-#### 8.4 Remove highly correlated variables
+#### 8.6 Binding back numerical and categorical variables
 ```{r}
-correlationMatrix <- round(cor(full[-c(162, 168)]),1)
-highlyCorrelated <- findCorrelation(correlationMatrix, cutoff=0.8)
-head(full[highlyCorrelated])
-```
-These are the 26 predictors that are more than 80% correlated with other
-predictors and which might cause multicollinearity in our model 
-
-```{r}
-full <- full[,-highlyCorrelated]
-dim(full)
-
-head(full)
-```
-Our model will try to predict house prices based on these 142 variables
-
-#### 8.5 Scaling and Centering variables
-```{r}
-preprocessParams <- preProcess(full[-c(142, 138)], method=c("center", "scale"))
-preprocessParams
+dim(dum_df);dim(num_df)
 ```
 
 ```{r}
-full_norm <- predict(preprocessParams, full)
-dim(full_norm)
+full_new <- cbind(dum_df, num_df)
+head(full_new)
 ```
+We have a total of 164 variables that are all numeric and will be used in 
+training a regression model to predict prices of houses
 
 ## 9. Model Training and Predictions
 
 #### 9.1 Splitting the above data to train vs test datasets
 ```{r}
-train_new <- full[!is.na(full$SalePrice),]
-test_new <- full[is.na(full$SalePrice),]
-
-dim(train_new);dim(test_new)
+train_new <- full_new[!is.na(full$SalePrice),]
+test_new <- full_new[is.na(full$SalePrice),]
 ```
 
-#### 9.2 Boosted Generalized Linear Model
+#### 9.2
+```{r}
+set.seed(27042018)
+my_control <-trainControl(method="cv", number=5)
+lassoGrid <- expand.grid(alpha = 1, lambda = seq(0.001,0.1,by = 0.0005))
+
+lasso_mod <- train(x=train_new, y=full$SalePrice[!is.na(full$SalePrice)], 
+                   method='glmnet', 
+                   trControl= my_control, 
+                   tuneGrid=lassoGrid)
+```
+
+
+
+```{r}
+lassoVarImp <- varImp(lasso_mod,scale=F)
+lassoImportance <- lassoVarImp$importance
+
+varsSelected <- length(which(lassoImportance$Overall!=0))
+varsNotSelected <- length(which(lassoImportance$Overall==0))
+
+cat('Lasso uses', varsSelected, 'variables in its model, and did not select', varsNotSelected, 'variables.')
+```
+
+```{r}
+plot(lassoVarImp, 15)
+```
+
+
+```{r}
+LassoPred <- predict(lasso_mod, test_new)
+```
+
+#### 9.3 
 ```{r}
 set.seed(1492)
 ### set training parameters
@@ -493,42 +552,9 @@ ctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 5)
 set.seed(300)
 
 # Use the expand.grid to specify the search space  
-glmBoostGrid = expand.grid(mstop = c(50, 100, 150, 200),
-                               prune = c('yes', 'no'))
+pcrGrid = expand.grid(ncomp = c(10, 40, 80))
 
-
-glmBoostFit <- train(SalePrice ~ ., 
-              data = train_new, 
-              method = "glmboost",
-              metric = 'RMSE', 
-              trControl = ctrl, 
-              tuneGrid = glmBoostGrid)
-
-glmBoostFit
-```
-
-
-```{r}
-## Predict using the test data
-plot(varImp(glmBoostFit), top = 10)
-
-```
-
-
-
-```{r}
-set.seed(1492)
-### set training parameters
-ctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 5)
-
-### train the models
-set.seed(300)
-
-# Use the expand.grid to specify the search space  
-pcrGrid = expand.grid(ncomp = c(10, 40, 80, 140))
-
-pcrFit <- train(SalePrice ~ ., 
-              data = train_new, 
+pcrFit <- train(x=train_new, y=full$SalePrice[!is.na(full$SalePrice)],
               method = "pcr",
               metric = 'RMSE', 
               trControl = ctrl,
@@ -538,31 +564,19 @@ pcrFit
 ```
 
 ```{r}
-predict(pcrFit, test_new)
+plot(varImp(lasso_mod,scale=F), 15)
 ```
 
 
 ```{r}
-set.seed(1492)
-### set training parameters
-ctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 5)
-
-### train the models
-set.seed(300)
-
-# Use the expand.grid to specify the search space  
-lmGrid = expand.grid(intercept = c(FALSE, TRUE))
-
-lmFit <- train(SalePrice ~ ., 
-              data = train_new, 
-              method = "lm",
-              metric = 'RMSE', 
-              trControl = ctrl,
-              tuneGrid = lmGrid)
-
-lmFit
+predict_pcr <- predict(pcrFit, test_new)
 ```
+
+
 ```{r}
-predict(lmFit, test_new)
+prediction_df <- data.frame(Id = test_labels, SalePrice = predict_pcr)
+head(prediction_df)
 ```
 
+# TUNING AND EXPLORING MODELS AND EVALUATING MODELS ACCURACY AS THIS IS REGRESSION
+# THEN FIND AN AUTOMATED WAY TO CHOOSE AMONG DIFFERENT MODELS
