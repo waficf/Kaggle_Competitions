@@ -1,0 +1,22 @@
+# Digita Recognizer
+***
+
+## 1. Importing the needed libraries
+```{r eval=FALSE, Packages}
+library(dplyr)
+library(ggplot2) # Data visualization
+library(VIM)  # Plots missing data
+library(mice)
+library(ggthemes)
+library(scales) # Scaling yaxis
+library(caret)
+library(ggcorrplot)
+library(grid)
+library(gridExtra)
+library(corrplot)
+```
+
+```{r}
+
+```
+

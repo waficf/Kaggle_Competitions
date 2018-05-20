@@ -1,3 +1,8 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
 # Housing Prices Submission
 ***
 
@@ -40,7 +45,7 @@ summary(full_numeric)
 
 #### 3.2 Numeric variables with high correlation
 ```{r}
-corr<-cor(as.matrix(full_numeric[!is.na(full_numeric$SalePrice),]))
+corr <- cor(as.matrix(full_numeric[!is.na(full_numeric$SalePrice),]))
 corr_mtx <- as.matrix(sort(corr[,'SalePrice'], decreasing = TRUE))
 
 CorHigh <- names(which(apply(corr_mtx, 1, function(x) abs(x)>0.5)))
@@ -115,10 +120,10 @@ Not all the above null variables are missing data points, lot of these factor
 variables are not available for some houses and thus are written as NA
 - In the first part of imputing missing data points I will replace these nulls
 with "None"
-- In the seond part I will impute continous variables using mice
+- In the second part I will impute continuous variables using mice
 - In the third part I will impute the factor variables with the levels that has 
-the most occurance. Although it is a dirty approach to imputing missing
-datapoints, the issue is that these are only 1 point missing and going beyond
+the most occurrence. Although it is a dirty approach to imputing missing
+data points, the issue is that these are only 1 point missing and going beyond
 this method will provide no added value when training the model
 
 #### 4.2 Replacing NA with "None"" for factor variables
@@ -178,7 +183,7 @@ full$Functional[is.na(full$Functional)] <- 'Typ'
 full$SaleType[is.na(full$SaleType)] <- 'WD'
 sapply(full, nulls)
 ```
-We do not have nay null datapoints anymore in our dataset
+We do not have nay null data points anymore in our data set
 
 ## 5. Exploring Factor Variables
 Here we will factor some numeric variables used above as they have levels, and
@@ -271,9 +276,9 @@ ggplot(full, aes(factor(YearBuilt)))+
   theme_classic()+
   theme(axis.text.x = element_text(angle = 90, hjust = 5))
 ```
-Although the size of the dataset is small to generalize, but we can see the
+Although the size of the data set is small to generalize, but we can see the
 years after WW2 had an increase number of homes, and then we can see it
-increasing in the late 90s and with the boost in easly 2000 due to the housing
+increasing in the late 90s and with the boost in easily 2000 due to the housing
 bubble
 
 ## 6. Engineering New Variables
@@ -311,7 +316,7 @@ ggplot(full[!is.na(full$SalePrice),], aes(x='', y=SalePrice))+
   theme_minimal()+
   facet_grid(. ~ Renovate)
 ```
-Since all houses above 70 has been renovated and those below 70 mostly havent
+Since all houses above 70 has been renovated and those below 70 mostly haven't
 been, there is slight difference in the median price
 
 
@@ -330,7 +335,7 @@ ggplot(full[!is.na(full$SalePrice),], aes(x=TotalSqFeet, y=SalePrice))+
   geom_smooth(method='lm',formula=y~x)
 ```
 Similar to the living area, when we added the total basement we can still see 
-a clear linear relationship betwen the size of the house and its price. But 
+a clear linear relationship between the size of the house and its price. But 
 looking at size vs price is a not how to evaluate the price of a house. Usually
 it is the price per SQFT which is a better indicator
 
@@ -342,14 +347,14 @@ ggplot(full[!is.na(full$SalePrice),], aes(x=TotalSqFeet, y=PriceSQFT))+
   geom_point()+
   scale_y_continuous('Price per SQFT',labels = dollar)
 ```
-Unlike Salesprice, Price per SQFT is no linear relationship with TotalSqfoot, 
+Unlike Sales price, Price per SQFT is no linear relationship with TotalSqfoot, 
 which is a great way of the data telling us that there are lots of other 
 variables that will eventually affect the price
 
 
 ## 7. Some More Plots with Price per SQFT
 Before running any ML algorithm, I want to know what is a main driver of price,
-Because obvoiusly it aint size as we saw in price per SQFT. 
+Because obviously it ain't size as we saw in price per SQFT. 
 
 #### 7.1 Neighborhood with age and renovate
 ```{r echo = FALSE, message=FALSE, warning=FALSE, error=FALSE, fig.width=7, fig.height=4}
@@ -363,7 +368,7 @@ Looking at these 2 plots, I am not sure if renovating your house will usually
 increase its price because if we look at the green dots we see that they are
 almost all below the median Price per SQTF. So if we look at the old town, we
 see all houses are renovated and below median price, while on the other hand
-Crawfor houses are renovated and most above the median price. 
+Crawford houses are renovated and most above the median price. 
 Looks like neighborhood is an important predictor of price
 
 #### 7.2 Quality vs Price per SQFT
@@ -406,8 +411,6 @@ head(full$PriceSQFT)
 
 ```{r}
 full <- full[-85]
-dim(full)
-head(full)
 ```
 For now I will go without the price per SQFT because it can be a response
 variable more than a predictor
@@ -453,7 +456,7 @@ dummies <- dummyVars(~., data = cat_pred)
 dum_df <- data.frame(predict(dummies, newdata = cat_pred))
 dim(dum_df)
 ```
-Since, it is mostly a regression model that will be implmented to predict prices
+Since, it is mostly a regression model that will be implemented to predict prices
 of houses, we created dummy variables for all these categorical variables to be 
 used in our model which ended up with 287 variable
 
