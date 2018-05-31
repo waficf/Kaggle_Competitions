@@ -16,21 +16,24 @@ library(gridExtra)
 library(corrplot)
 library(stringr) # Split string on REGEX
 library(RPostgreSQL) # Postgresql R Package
+library(odbc)
 ```
+
+https://www.rstudio.com/resources/videos/best-practices-for-working-with-databases-webinar/ 
+
+```{r}
+  
+con <- dbConnect(odbc(),
+                 driver = "PostgreSQL Driver",
+                 database = "NYCTaxiDB",
+                 uid = "wafic",
+                 pwd = "a0310151",
+                 server = "mypostgreinstance.czleyzmpydaj.eu-central-1.rds.amazonaws.com",
+                 port = 5432)
+```
+
 
 ## 2. Importing and Basic Exploting
-```{r}
-nycdb <- DBI::dbConnect(RPostgreSQL::PostgreSQL(),
-                        host = 'mypostgreinstance.czleyzmpydaj.eu-central-1.rds.amazonaws.com',
-                        dbname = 'NYCTaxiDB',
-                        port = '5432',
-                        user = 'wafic',
-                        password = 'a0310151')
-```
-
-```{r}
-#dbGetQuery(src_tbls, 'select * from public.train_data_1')
-```
 
 ```{r}
 nycdb_dply <- src_postgres(
@@ -41,6 +44,7 @@ nycdb_dply <- src_postgres(
   password = 'a0310151')
 ```
 
+
 ```{r}
 src_tbls(nycdb_dply)
 ```
@@ -50,5 +54,10 @@ train_1 <- tbl(nycdb_dply, 'train_data_1')
 ```
 
 ```{r}
+train_1
+```
+
+```{r}
+
 ```
 
